@@ -107,7 +107,7 @@ begin
     if (rst_n = '0') then
       LED_register <= '0'; -- Reset LED register when reset is active
     elsif rising_edge(clk100Mhz) then
-      LED_register <= state_LED; -- Update LED register state on clock rising edge
+      LED_register <= not LED_register; -- Update LED register state on clock rising edge
     end if;
   end process;  
   

@@ -33,7 +33,7 @@ architecture Behavioural of debouncer is
     signal state, next_state : state_type;
     signal time_elapsed : std_logic := '0';
     signal count : unsigned(c_counter_width-1 downto 0) := (others => '0');
-    
+    signal enable : STD_LOGIC := '0'; 
 begin
     -- Timer
     process (clk, rst_n)
@@ -41,14 +41,19 @@ begin
         if rst_n = '0' then
             count <= (others => '0');
             time_elapsed <= '0';
-        elsif rising_edge(clk) then
-            if state = BTN_PRS and count < c_cycles then
+            if  ena = '1' then
+                if count < c_cycles then
                 count <= count + 1;
                 time_elapsed <= '0';
-            elsif count = c_cycles then
+                else
+                count <= (others => '0');
                 time_elapsed <= '1';
+                end if;
+             else
+                count <= (others => '0'); 
+                time_elapsed <= '0';    
             end if;
-        end if;
+         end if;   
     end process;
 
     -- FSM Register of next state
@@ -57,11 +62,7 @@ begin
         if rst_n = '0' then
             state <= IDLE;
         elsif rising_edge(clk) then
-            if ena = '1' then
-                state <= next_state;
-            else
-                state <= IDLE;
-            end if;
+            state <= next_state;
         end if;
     end process;
     
@@ -69,36 +70,46 @@ begin
     begin
         case state is
             when IDLE =>
+                debounced <= '0';
                 if sig_in = '1' then
                     next_state <= BTN_PRS;
+                else
+                    next_state <= IDLE;
                 end if;
             when BTN_PRS =>
+                debounced <= '0';
                 if time_elapsed = '1' and sig_in = '1' then
+                    count <= (others => '0'); 
                     next_state <= VALID;
                 elsif time_elapsed = '1' and sig_in = '0' then
                     next_state <= IDLE; 
                 elsif ena = '0' then
                     next_state <= IDLE;
                 else
+                    enable <= '1';
                     next_state <= BTN_PRS;
                 end if;
             when VALID =>
+                debounced <= '1';
                 if sig_in = '0' then
                     next_state <= BTN_UNPRS;
                 elsif ena = '0' then
                     next_state <= IDLE;
+                else
+                    next_state <= VALID;
                 end if;
             when BTN_UNPRS =>
+                debounced <= '0';
                 if time_elapsed = '1' or ena = '0' then
+                    count <= (others => '0');
                     next_state <= IDLE;
-                elsif time_elapsed = '0' then
+                else
+                    enable <= '1';
                     next_state <= BTN_UNPRS;
                 end if;
             when others =>
                 next_state <= IDLE;
         end case;
     end process;
-    
-    debounced <= '1' when state = VALID else '0';
-    
+        
 end Behavioural;
